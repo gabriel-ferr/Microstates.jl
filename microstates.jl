@@ -28,6 +28,7 @@ using StatsBase
 using Distances
 
 include("src/utils.jl")
+include("src/entropy.jl")
 include("src/compute_cpu.jl")
 
 #       Changes the float format =D
@@ -40,6 +41,7 @@ function change_float_type(type::DataType)
 end
 
 export change_float_type
+export entropy
 export microstates
 export power_vector
 
