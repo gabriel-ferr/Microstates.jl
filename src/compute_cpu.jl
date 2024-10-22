@@ -3,7 +3,12 @@
 #
 
 
-function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; sampling::Int=floor(Int, size(serie, 2) * 0.1), p_vector=power_vector(n), recurrence=standard_recurrence)
+function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; sampling::Int=floor(Int, size(serie, 2) * 0.1), p_vector::Vector{Int64}=power_vector(n), recurrence::Function=standard_recurrence)
+
+    if (n >= 8)
+        println("How Microstates.jl uses Int64 you cannot use n >= 8 because Int64 doesn't support it.")
+        return
+    end
 
     #       Okay, I'm going to use a dict here to save some RAM, since most of
     #   the microstates for n > 3 don't exist. This way we can easily compute
@@ -26,7 +31,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
 
     #       Let's do it >.<
     #       Since index_row and index_col have the same number of elements, 
-    #   we can use just one index to get them, so just one for here. =3
+    #   we can use just one index to get them, so just one for here. =D
     for i in eachindex(index_row)
         add = 0
 
@@ -49,7 +54,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
         counter += 1
     end
 
-    #       Ok, now I calculate the probalities...
+    #       Ok, now calculate the probalities...
     for k in keys(stats)
         stats[k] /= counter
     end
