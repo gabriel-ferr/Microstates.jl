@@ -17,6 +17,8 @@
 #           ∙ Distances.jl
 #
 #       Obs: I think that you could try "import Pkg; Pkg.add("Microstates")" to install it in Pkg path ...
+#
+#       
 module Microstates
 
 #       This variable defines the float type used in the system. 
@@ -26,10 +28,13 @@ __FLOAT_TYPE = Float64
 
 using StatsBase
 using Distances
+using CUDA
 
 include("src/utils.jl")
 include("src/entropy.jl")
+include("src/max_entroy.jl")
 include("src/compute_cpu.jl")
+include("src/compute_gpu.jl")
 
 #       Changes the float format =D
 function change_float_type(type::DataType)
@@ -37,11 +42,13 @@ function change_float_type(type::DataType)
         println("You can only change the data format to Float32 or Float64!")
         return
     end
-    __FLOAT_TYPE = type
+    global __FLOAT_TYPE = type
+    println(string("Done: ", __FLOAT_TYPE))
 end
 
 export change_float_type
 export entropy
+export gpu_microstates
 export microstates
 export power_vector
 
