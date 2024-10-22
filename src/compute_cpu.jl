@@ -3,7 +3,7 @@
 #
 
 
-function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; sampling::Int=floor(Int, size(serie, 2) * 0.1), p_vector::Vector{Int64}=power_vector(n), recurrence::Function=standard_recurrence)
+function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; sampling::Int=floor(Int, size(serie, 2) * 0.4), p_vector::Vector{Int64}=power_vector(n), recurrence::Function=standard_recurrence)
 
     if (n >= 8)
         println("How Microstates.jl uses Int64 you cannot use n >= 8 because Int64 doesn't support it.")
@@ -20,7 +20,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
     p = 0
     add = 0
     counter = 0
-    sz = size(serie, 2)
+    sz = size(serie, 1)
 
     row_counter = 0
     col_counter = 0
@@ -40,7 +40,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
 
         #       Well, now we set one index to get the power vector position =D
         for n_index in eachindex(p_vector)
-            add = add + p_vector[n_index] * recurrence(serie[:, index_row[i]+row_counter], serie[:, index_col[i]+col_counter], ε)
+            add = add + p_vector[n_index] * recurrence(serie[index_row[i]+row_counter, :], serie[index_col[i]+col_counter, :], ε)
 
             col_counter += 1
             if (col_counter >= n)
