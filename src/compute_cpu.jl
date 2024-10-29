@@ -2,8 +2,108 @@
 #       -- Microstates.jl: read more in https://github.com/gabriel-ferr/Microstates.jl
 #
 
+function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; sampling::Int=floor(Int, size(serie, 1) * 0.1), p_vector::Vector{Int64}=power_vector(n), recurrence::Function=standard_recurrence)
+    if (n >= 8)
+        println("How Microstates.jl uses Int64 you cannot use n >= 8 because Int64 doesn't support it.")
+        return
+    end
 
-function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; sampling::Int=floor(Int, size(serie, 2) * 0.4), p_vector::Vector{Int64}=power_vector(n), recurrence::Function=standard_recurrence)
+    #       I will to work with multithreading process here, because I think that
+    #   the previous version of this code isn't doing the sampling correctly.
+    #       So, first I define a task function...
+    function __task_microstates(x_index)
+        #
+        #       a) Do a sampling about the columns...
+        y_samples = sample(1:size(serie, 1)-n, sampling)
+        #       b) Create a dict to store our result.
+        result = Dict{Int64,__FLOAT_TYPE}()
+
+        #       c) Alloc some memory =D
+        p = 0
+        add = 0
+        counter = 0
+        x_counter = 0
+        y_counter = 0
+
+        #       Ok, now...
+        for x in x_index
+            for y in y_samples
+                add = 0
+                x_counter = 0
+                y_counter = 0
+
+                for n in eachindex(p_vector)
+                    add = add + p_vector[n] * recurrence(serie[x+x_counter, :], serie[y+y_counter, :], ε)
+
+                    y_counter += 1
+                    if (y_counter >= n)
+                        x_counter += 1
+                        y_counter = 0
+                    end
+                end
+
+                p = Int64(add) + 1
+                result[p] = get(result, p, 0) + 1
+                counter += 1
+            end
+        end
+
+        #       Return the dict =3
+        return result, counter
+    end
+
+    #       Okay, I will to take the sample for x here...
+    x_samples = sample(1:size(serie, 1)-n, sampling)
+
+    #       Now, we partition it in the threads ...
+    int_numb = trunc(Int, sampling / Threads.nthreads())
+    par_numb = sampling - (int_numb * Threads.nthreads())
+
+    #       Okay, now create the partition ranges...
+    _numb_init = int_numb + (par_numb > 0 ? 1 : 0)
+    if (par_numb > 0)
+        par_numb -= 1
+    end
+
+    itr = [1:_numb_init]
+    for i = 2:Threads.nthreads()
+        _numb = int_numb + (par_numb > 0 ? 1 : 0)
+        if (par_numb > 0)
+            par_numb -= 1
+        end
+        push!(itr, (itr[i-1][end]+1):(itr[i-1][end]+_numb))
+    end
+
+    #       Free space...
+    int_numb = Nothing
+    par_numb = Nothing
+    _numb_init = Nothing
+
+    #       Okay, now we create the tasks...
+    tasks = []
+    for i = 1:Threads.nthreads()
+        push!(tasks, Threads.@spawn __task_microstates(x_samples[itr[i]]))
+    end
+
+    #       Get the results...
+    results = fetch.(tasks)
+    #       Vector with our stats =3
+    stats = zeros(Float64, 2^(n * n))
+    cnt = 0
+    #       To finish...
+    for r in results
+        cnt += r[2]
+        stats[collect(keys(r[1]))] .= collect(values(r[1]))
+    end
+    #       Calc the probs...
+    for i in eachindex(stats)
+        stats[i] /= cnt
+    end
+
+    return stats, cnt
+end
+
+function microstates_lowsamples(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; sampling::Int=floor(Int, size(serie, 1) * 0.2), p_vector::Vector{Int64}=power_vector(n), recurrence::Function=standard_recurrence)
 
     if (n >= 8)
         println("How Microstates.jl uses Int64 you cannot use n >= 8 because Int64 doesn't support it.")
