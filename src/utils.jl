@@ -16,3 +16,8 @@ end
 function standard_recurrence(x::AbstractVector{__FLOAT_TYPE}, y::AbstractVector{__FLOAT_TYPE}, ε::__FLOAT_TYPE)
     return (ε - euclidean(x, y)) >= 0 ? 1 : 0
 end
+
+#           Function to Corridor recurrence...
+function corridor_recurrence(x::AbstractVector{__FLOAT_TYPE}, y::AbstractVector{__FLOAT_TYPE}, ε::Tuple{__FLOAT_TYPE,__FLOAT_TYPE})
+    return ((ε[2] - euclidean(x, y)) >= 0 ? 1 : 0) * ((euclidean(x, y) - ε[1]) >= 0 ? 1 : 0)
+end
