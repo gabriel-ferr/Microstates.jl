@@ -57,7 +57,7 @@ The `n` parameter specifies the size of the microstate. As we are using Int64 th
 
 Finally, the `samples` defines the number of "rows"  that we take, and for each row we take the same number of "columns", both randomly.
 """
-function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples=floor(Int, size(serie, 2)), power_aux::Vector{Int}=power_vector, recurrence::Function=std_recurrence)
+function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples::Int64=floor(Int, size(serie, 2)), power_aux::Vector{Int}=power_vector(n), recurrence=std_recurrence)
     if (n < 2 || n > 7)
         println("As Microstates.jl uses Int64, you cannot use n > 7 because Int64 does not support it. And n < 2 makes no sense!")
         return
