@@ -3,6 +3,7 @@
 #               Gabriel Ferreira
 #               Orientation: Sérgio Roberto Lopes, Thiago de Lima Prado
 #
+##      -- STD Recurrence
 """
     findthreshold(serie::AbstractArray{__FLOAT_TYPE,3}, n::Int; thres::Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int}=(0.0, 1.0, 20), multiplier::Int=4)
 
@@ -21,12 +22,21 @@ Doing it we try to get a value of ε that has more accuracy =D
 
 If the threshold's range that you pass to the function does not have the maximum entropy
 into it, the function will to return a message saying it.
+
+
+    findthreshold(serie::AbstractArray{__FLOAT_TYPE,3}, n::Int, thres::Tuple{Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int},Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int}}; multiplier::Tuple{Int,Int}=(2, 2), pvec=power_vector(n))
+
+This variation of the same functions do the same thing but using the corridor recurrence. If you want to use
+corridor recurrence and this function to find the `ε` value, the ideia is equals but you need to pass the threshold
+range as a parameter `thres::Tuple{Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int},Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int}}`, i.e:
+
+```
+    julia> findthreshold(serie, n, ((0.0, 0.1, 10), (0.0, 1.0, 20)))
+```
+
+where the first tuple says the range of `ε_min` and the second of `ε_max`.
 """
-function findthreshold(serie::AbstractArray{__FLOAT_TYPE,3}, n::Int; thres::Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int}=(0.0, 1.0, 20), multiplier::Int=4)
-    #
-    #       How I am going to work with some loops, I define a constant
-    #   power vector here.
-    pvec = power_vector(n)
+function findthreshold(serie::AbstractArray{__FLOAT_TYPE,3}, n::Int; thres::Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int}=(0.0, 1.0, 20), multiplier::Int=4, pvec=power_vector(n))
     #
     #       Get a range of values for our threshold...
     ε_big = range(thres[1], thres[2], thres[3])
@@ -95,4 +105,66 @@ function findthreshold(serie::AbstractArray{__FLOAT_TYPE,3}, n::Int; thres::Tupl
     end
 
     return stats[2]
+end
+
+##      -- CRD Recurrence
+function findthreshold(serie::AbstractArray{__FLOAT_TYPE,3}, n::Int, thres::Tuple{Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int},Tuple{__FLOAT_TYPE,__FLOAT_TYPE,Int}}; multiplier::Tuple{Int,Int}=(2, 2), pvec=power_vector(n))
+    #
+    #       Now we have 2 ranges, then...
+    ε_min_big = range(thres[1][1], thres[1][2], thres[1][3])
+    ε_max_big = range(thres[2][1], thres[2][2], thres[2][3])
+    #       Our status now needs to have 2 dimensions, and only
+    #   will to save the entropy values...
+    stats = zeros(__FLOAT_TYPE, length(ε_min_big), length(ε_max_big))
+    #       And one vector to store the entropy of each sample...
+    for ε_max in eachindex(ε_max_big)
+        Threads.@threads for ε_min in eachindex(ε_min_big)
+            if (ε_min_big[ε_min] >= ε_max_big[ε_max])
+                continue
+            end
+
+            etr = zeros(__FLOAT_TYPE, size(serie, 3))
+            for i in eachindex(etr)
+                #       Get the microstates probabilities...
+                probs, _ = microstates(serie[:, :, i], (ε_min_big[ε_min], ε_max_big[ε_max]), n; power_aux=pvec, recurrence=crd_recurrence)
+                etr[i] = entropy(probs)
+            end
+
+            #       The logic used to standard recurrence don't work here, so we need to
+            #   compute all entropies and get the max of the matrix =<
+            stats[ε_min, ε_max] = mean(etr)
+        end
+    end
+
+    #       So.. get the max =D
+    max = findmax(stats)[2]
+    around = [(ε_min_big[max[1] > 1 ? max[1] - 1 : max[1]], ε_min_big[max[1] < length(ε_min_big) ? max[1] + 1 : max[1]]), (ε_max_big[max[2] > 1 ? max[2] - 1 : max[2]], ε_max_big[max[2] < length(ε_min_big) ? max[2] + 1 : max[2]])]
+
+    #       Now, to accuracy...
+    ε_min_small = range(around[1][1], around[1][2], thres[1][3] * multiplier[1])
+    ε_max_small = range(around[2][1], around[2][2], thres[2][3] * multiplier[2])
+    stats = zeros(__FLOAT_TYPE, length(ε_min_small), length(ε_max_small))
+
+    for ε_max in eachindex(ε_max_small)
+        Threads.@threads for ε_min in eachindex(ε_min_small)
+            if (ε_min_small[ε_min] >= ε_max_small[ε_max])
+                continue
+            end
+
+            etr = zeros(__FLOAT_TYPE, size(serie, 3))
+            for i in eachindex(etr)
+                #       Get the microstates probabilities...
+                probs, _ = microstates(serie[:, :, i], (ε_min_small[ε_min], ε_max_small[ε_max]), n; power_aux=pvec, recurrence=crd_recurrence)
+                etr[i] = entropy(probs)
+            end
+
+            #       The logic used to standard recurrence don't work here, so we need to
+            #   compute all entropies and get the max of the matrix =<
+            stats[ε_min, ε_max] = mean(etr)
+        end
+    end
+
+    #       Get the max again...
+    max = findmax(stats)
+    return (max[1], (ε_min_small[max[2][1]], ε_max_small[max[2][2]]))
 end

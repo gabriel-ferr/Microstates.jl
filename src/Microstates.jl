@@ -30,6 +30,7 @@ include("cpu/compute.jl")
 include("cpu/entropy.jl")
 include("cpu/findthres.jl")
 include("utils/std_recurrence.jl")
+include("utils/crd_recurrence.jl")
 #       Export the functions...
 export microstates
 export power_vector
