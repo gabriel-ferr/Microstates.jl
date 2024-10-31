@@ -22,7 +22,7 @@ function power_vector(n::Int)
 end
 
 """
-    microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples=floor(Int, size(serie, 2)), power_aux::Vector{Int}=power_vector, recurrence::Function=std_recurrence)
+    microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples=floor(Int, size(serie, 2)), power_aux::Vector{Int}=power_vector, recurrence=std_recurrence)
 
 Calculates the probabilities of microstates from a series and returns these probabilities and the number of samples.
 Instead of computing the recurrence matrix and taking the microstates after it, we only compute the recurrence in each microstate block.
@@ -44,9 +44,8 @@ The serie format is like the fomat that we usually use in the physics, i.e:
 Or, if you are using DifferentialEquations.jl and take the result from `data = solve(...)` as `data[:, :]` the format is similar.
 Where each row is a dimension and each column is a timestamp.
 
-The threshold (`ε`) value have a Any format because it is defined by recurrence function. If you use the standard recurrence `recurrence::Function=std_recurrence`
-The threshold value (`ε`) has an Any format because it is defined by the recurrence function. If you use the default recurrence `recurrence::Function=std_recurrence' 
-the ε value must be a Float64, but if you need to use other recurrence functions you can change the recurrence function and pass an appropriate ε value, i.e:
+The threshold value (`ε`) has an Any format because it is defined by the recurrence function, then if you use the default recurrence `recurrence=std_recurrence` 
+the ε value must be a Float64, but if you need to use other recurrence function you can change the recurrence function and pass an appropriate ε value, i.e:
 ```
     julia> function corridor(x::Vector{Float64}, y::Vector{Float64}, ε::Tuple{Float64, Float64})
                 return ((ε[2] - euclidean(x, y)) * (euclidean(x, y) - ε[1])) >= 0 ? Int8(1) : Int8(0)
@@ -55,7 +54,8 @@ the ε value must be a Float64, but if you need to use other recurrence function
 ```
 The `n` parameter specifies the size of the microstate. As we are using Int64 the value of `n` must be between 2 and 7.
 
-Finally, the `samples` defines the number of "rows"  that we take, and for each row we take the same number of "columns", both randomly.
+Finally, the `samples` defines the number of "rows"  that we take, and for each row we take the same number of "columns", both randomly and we use it as start index to
+define the microstate blocks in an abstract recurrence matrix.
 """
 function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples::Int64=floor(Int, size(serie, 2)), power_aux::Vector{Int}=power_vector(n), recurrence=std_recurrence)
     if (n < 2 || n > 7)
@@ -140,7 +140,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
     #       Wait and get the result of the tasks =3
     results = fetch.(tasks)
     #       Alloc memory for all microstate that we can have.
-    stats = zeros(Float64, 2^(n * n))
+    stats = zeros(__FLOAT_TYPE, 2^(n * n))
     cnt = 0
     #       Groups the results of the tasks...
     for r in results

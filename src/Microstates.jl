@@ -13,6 +13,7 @@ module Microstates
 #       Import the libraries that we need...
 using Distances
 using StatsBase
+using Statistics
 #       Define the float type that Microstates use.
 __FLOAT_TYPE = Float64
 #       Change the float type between Float32 or Float64.
@@ -26,8 +27,12 @@ end
 #
 #       Include the project files...
 include("cpu/compute.jl")
+include("cpu/entropy.jl")
+include("cpu/findthres.jl")
 include("utils/std_recurrence.jl")
 #       Export the functions...
 export microstates
+export power_vector
+export findthreshold
 #
 end
