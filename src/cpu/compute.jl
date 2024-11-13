@@ -64,7 +64,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
     end
     #
     #       As I need to use an async process to make it faster, I make here a "task function".
-    function __task_microstates(x_index)
+    function __task_microstates(x_index, th)
         #
         #       a) Does a sampling over the columns...
         y_samples = sample(1:size(serie, 2)-n, samples)
@@ -90,7 +90,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
                     try
                         add = add + power_aux[n] * recurrence(serie[:, x+x_counter], serie[:, y+y_counter], ε)
                     catch
-                        println(string("Error while computing: x = ", x, ", x_counter = ", x_counter, "; y = ", y, "y_counter = ", y_counter))
+                        println(string("Error while computing at th ", th, ": x = ", x, ", x_counter = ", x_counter, "; y = ", y, ", y_counter = ", y_counter))
                         error = true
                         break
                     end
@@ -146,7 +146,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
     #       Okay, now we create the tasks...
     tasks = []
     for i = 1:Threads.nthreads()
-        push!(tasks, Threads.@spawn __task_microstates(x_samples[itr[i]]))
+        push!(tasks, Threads.@spawn __task_microstates(x_samples[itr[i]], i))
     end
 
     #       Wait and get the result of the tasks =3
