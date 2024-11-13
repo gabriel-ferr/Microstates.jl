@@ -57,7 +57,7 @@ The `n` parameter specifies the size of the microstate. As we are using Int64 th
 Finally, the `samples` defines the number of "rows"  that we take, and for each row we take the same number of "columns", both randomly and we use it as start index to
 define the microstate blocks in an abstract recurrence matrix.
 """
-function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples::Int64=floor(Int, size(serie, 2)), power_aux::Vector{Int}=power_vector(n), recurrence=std_recurrence)
+function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples::Int64=floor(Int, size(serie, 2) * 0.32), power_aux::Vector{Int}=power_vector(n), recurrence=std_recurrence)
     if (n < 2 || n > 7)
         println("As Microstates.jl uses Int64, you cannot use n > 7 because Int64 does not support it. And n < 2 makes no sense!")
         return
@@ -71,11 +71,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
         #       b) Creates a dict to store our result...
         result = Dict{Int64,__FLOAT_TYPE}()
         #       c) Alloc some memory =D
-        p = 0
-        add = 0
         counter = 0
-        x_counter = 0
-        y_counter = 0
         error = false
         #
         #       Ok...
@@ -86,9 +82,9 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
                 y_counter = 0
                 error = false
 
-                for n in eachindex(power_aux)
+                for m in eachindex(power_aux)
                     try
-                        add = add + power_aux[n] * recurrence(serie[:, x+x_counter], serie[:, y+y_counter], ε)
+                        add = add + power_aux[m] * recurrence(serie[:, x+x_counter], serie[:, y+y_counter], ε)
                     catch
                         println(string("Error while computing at th ", th, ": x = ", x, ", x_counter = ", x_counter, "; y = ", y, ", y_counter = ", y_counter))
                         error = true
@@ -107,7 +103,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
                 end
 
                 p = add + 1
-                result[p] = get(result, p, 0) + 1
+                result[p] = get(result, add + 1, 0) + 1
                 counter += 1
             end
         end
