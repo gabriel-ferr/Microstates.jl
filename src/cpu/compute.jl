@@ -76,6 +76,7 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
         counter = 0
         x_counter = 0
         y_counter = 0
+        error = false
         #
         #       Ok...
         for x in x_index
@@ -83,15 +84,26 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
                 add = 0
                 x_counter = 0
                 y_counter = 0
+                error = false
 
                 for n in eachindex(power_aux)
-                    add = add + power_aux[n] * recurrence(serie[:, x+x_counter], serie[:, y+y_counter], ε)
+                    try
+                        add = add + power_aux[n] * recurrence(serie[:, x+x_counter], serie[:, y+y_counter], ε)
+                    catch
+                        println(string("Error while computing: x = ", x, ", x_counter = ", x_counter, "; y = ", y, "y_counter = ", y_counter))
+                        error = true
+                        break
+                    end
 
                     y_counter += 1
                     if (y_counter >= n)
                         x_counter += 1
                         y_counter = 0
                     end
+                end
+
+                if (error)
+                    continue
                 end
 
                 p = add + 1
@@ -153,4 +165,10 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
     end
     #
     return stats, cnt
+end
+
+#
+#       DEV Version: I want to try create a 3 dimensions recurrence block, while I expand the
+#   recurrence concept.
+function microstates()
 end
