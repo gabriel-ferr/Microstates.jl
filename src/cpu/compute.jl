@@ -71,11 +71,15 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
         #       b) Creates a dict to store our result...
         result = Dict{Int64,__FLOAT_TYPE}()
         #       c) Alloc some memory =D
+        add = 0
+        x_counter = 0
+        y_counter = 0
         counter = 0
         error = false
         #
         #       Ok...
         for x in x_index
+            y_samples = sample(1:size(serie, 2)-n, samples)
             for y in y_samples
                 add = 0
                 x_counter = 0
