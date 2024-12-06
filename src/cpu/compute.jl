@@ -38,7 +38,7 @@ end
 #           This is the default function used to compute the microstates of a time series.
 function microstates(data::AbstractArray{Float64, 2}, threshold::Any, n::Int;
     samples_percent::Float64 = 0.2, vect::Vector{Int64} = power_vector(n), recurr::Function = std_recurrence)
-    return microstates(data, data, threshold, (n, n); samples_percent = 0.2, vect = power_vector((n, n)), recurr  = std_recurrence)
+    return microstates(data, data, threshold, (n, n); samples_percent = samples_percent, vect = vect, recurr  = recurr)
 end
 # -------------------------------------------------------------------------------------------
 #           And here, I create a general version to compute the microstates of "simple data".
