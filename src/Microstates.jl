@@ -24,7 +24,9 @@ using StatsBase
 using Statistics
 # -------------------------------------------------------------------------------------------
 include("cpu/compute.jl")
+include("utils/entropy.jl")
 include("utils/std_recurrence.jl")
+include("utils/crd_recurrence.jl")
 # -------------------------------------------------------------------------------------------
 export power_vector
 export microstates
