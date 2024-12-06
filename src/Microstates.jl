@@ -30,6 +30,7 @@ include("utils/crd_recurrence.jl")
 # -------------------------------------------------------------------------------------------
 export power_vector
 export microstates
+
 export std_recurrence
 export crd_recurrence
 # ===========================================================================================
