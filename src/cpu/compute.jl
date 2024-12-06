@@ -121,8 +121,8 @@ function microstates(data_x::AbstractArray{Float64, 2}, data_y::AbstractArray{Fl
         cnt += results[i]
     end
 
-    stats ./= cnt
+    res ./= cnt
 
-    return stats, cnt
+    return res, cnt
 end
 # -------------------------------------------------------------------------------------------
