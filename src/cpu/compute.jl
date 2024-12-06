@@ -1,129 +1,60 @@
 #
-#           Microstates.jl
-#               Gabriel Ferreira
-#               Orientation: Sérgio Roberto Lopes, Thiago de Lima Prado
+#       Microstates.jl
+#       In this script, we have several functions to compute the microstates from various types of data.
 #
-"""
-    power_vector(n::Int)
-
-Returns a vector that helps to convert the microstates from a binary format to a decimal format.
-If you want to run the microstates in a loop, consider defining a constant power vector and passing it to the microstates function, such as:
-```
-    julia> const pvec = power_vector(2)
-    julia> microstates(...; power_aux = pvec)
-```
-"""
+# -------------------------------------------------------------------------------------------
+#           The power vector helps convert microstates from a binary form to a decimal, which
+#   we use as an index for a vector.
 function power_vector(n::Int)
-    vec = zeros(Int, (n * n))
-    for i in eachindex(vec)
-        vec[i] = 2^(i - 1)
-    end
-    return vec
+    return power_vector((n, n))
 end
-
-"""
-    microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples=floor(Int, size(serie, 2)), power_aux::Vector{Int}=power_vector, recurrence=std_recurrence)
-
-Calculates the probabilities of microstates from a series and returns these probabilities and the number of samples.
-Instead of computing the recurrence matrix and taking the microstates after it, we only compute the recurrence in each microstate block.
-
-If you want to run this function in a loop, consider defining a constant power vector and passing it to the function, i.e:
-```
-    julia> const pvec = power_vector(2)
-    julia> microstates(...; power_aux = pvec)
-```
-This will to free up some time with Julia's garbage collector.
-
-The serie format is like the fomat that we usually use in the physics, i.e:
-```
-    julia> serie = rand(Float64, 2, 1000)
-    2x1000 Matrix{Float64}:
-    0.562823    0.796586    0.369896    ...     0.745746
-    0.381401    0.544322    0.003962    ...     0.188805
-```
-Or, if you are using DifferentialEquations.jl and take the result from `data = solve(...)` as `data[:, :]` the format is similar.
-Where each row is a dimension and each column is a timestamp.
-
-The threshold value (`ε`) has an Any format because it is defined by the recurrence function, then if you use the default recurrence `recurrence=std_recurrence` 
-the ε value must be a Float64, but if you need to use other recurrence function you can change the recurrence function and pass an appropriate ε value, i.e:
-```
-    julia> function corridor(x::Vector{Float64}, y::Vector{Float64}, ε::Tuple{Float64, Float64})
-                return ((ε[2] - euclidean(x, y)) * (euclidean(x, y) - ε[1])) >= 0 ? Int8(1) : Int8(0)
-           end
-    julia> microstate(serie, (0.05, 0.2), n; recurrence=corridor)
-```
-The `n` parameter specifies the size of the microstate. As we are using Int64 the value of `n` must be between 2 and 7.
-
-Finally, the `samples` defines the number of "rows"  that we take, and for each row we take the same number of "columns", both randomly and we use it as start index to
-define the microstate blocks in an abstract recurrence matrix.
-"""
-function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samples::Int64=floor(Int, size(serie, 2) * 0.32), power_aux::Vector{Int}=power_vector(n), recurrence=std_recurrence)
-    if (n < 2 || n > 7)
-        println("As Microstates.jl uses Int64, you cannot use n > 7 because Int64 does not support it. And n < 2 makes no sense!")
-        return
+# -------------------------------------------------------------------------------------------
+#           Here, I create a general function to compute a power vector of any size,
+#   while limiting the microstate "area" to 64.
+function power_vector(sz::Tuple{Vararg{Int}})
+    #
+    #       First, I will calculate the "area" of our microstate. The `sz` tuple receives 
+    #   the size of each side of the microstate, so I calculate the area by multiplying the
+    #   sizes of each side, because it is a rectangle =D
+    microstate_area = 1
+    for a in sz
+        microstate_area *= a
     end
     #
-    #       As I need to use an async process to make it faster, I make here a "task function".
-    function __task_microstates(x_index, th)
-        #
-        #       a) Does a sampling over the columns...
-        y_samples = sample(1:size(serie, 2)-n, samples)
-        #       b) Creates a dict to store our result...
-        result = Dict{Int64,__FLOAT_TYPE}()
-        #       c) Alloc some memory =D
-        add = 0
-        x_counter = 0
-        y_counter = 0
-        counter = 0
-        error = false
-        #
-        #       Ok...
-        for x in x_index
-            y_samples = sample(1:size(serie, 2)-n, samples)
-            for y in y_samples
-                add = 0
-                x_counter = 0
-                y_counter = 0
-                error = false
-
-                for m in eachindex(power_aux)
-                    try
-                        add = add + power_aux[m] * recurrence(serie[:, x+x_counter], serie[:, y+y_counter], ε)
-                    catch
-                        println(string("Error while computing at th ", th, ": x = ", x, ", x_counter = ", x_counter, "; y = ", y, ", y_counter = ", y_counter))
-                        error = true
-                        break
-                    end
-
-                    y_counter += 1
-                    if (y_counter >= n)
-                        x_counter += 1
-                        y_counter = 0
-                    end
-                end
-
-                if (error)
-                    continue
-                end
-
-                p = add + 1
-                result[p] = get(result, add + 1, 0) + 1
-                counter += 1
-            end
-        end
-        #
-        #       Returns the dict...
-        return result, counter
+    #       Now, since julia uses Int64, we cannot have an area greater than 64, so I will check it.
+    if (microstate_area >= 64)
+        throw("Julia uses Int64, so the microstate space cannot be greater than 64.")
     end
+    #
+    #       Finally, we create the power vector =D
+    vect = zeros(Int, microstate_area)
+    for i in eachindex(vect)
+        vect[i] = 2^(i - 1)
+    end
+    #
+    return vect
+end
+# -------------------------------------------------------------------------------------------
+#           This is the default function used to compute the microstates of a time series.
+function microstates(data::AbstractArray{Float64, 2}, threshold::Any, n::Int;
+    samples_percent::Float64 = 0.2, vect::Vector{Int64} = power_vector(n), recurr::Function = std_recurrence)
+    return microstates(data, data, threshold, (n, n); samples_percent = 0.2, vect = power_vector((n, n)), recurr  = std_recurrence)
+end
+# -------------------------------------------------------------------------------------------
+#           And here, I create a general version to compute the microstates of "simple data".
+#   More specifically, this function calculates the microstates of a CRP.
+function microstates(data_x::AbstractArray{Float64, 2}, data_y::AbstractArray{Float64, 2}, threshold::Any, sz::Tuple{Int, Int}; 
+    samples_percent::Float64 = 0.2, vect::Vector{Int64} = power_vector(sz), recurr::Function = std_recurrence)
+    #
+    side_samples = samples_percent ^ (1/length(sz))
+    #
+    x_samples = sample(1:size(data_x, 2)-(sz[1] - 1), Int(ceil(size(data_x, 2) * side_samples)))
+    #
+    stats = zeros(Float64, 2^(sz[1] * sz[2]), Threads.nthreads())
+    #
+    int_numb = trunc(Int, Int(ceil(size(data_x, 2) * side_samples)) / Threads.nthreads())
+    par_numb = Int(ceil(size(data_x, 2) * side_samples)) - (int_numb * Threads.nthreads())
 
-    #       Okay, first I take the samples for x...
-    x_samples = sample(1:size(serie, 2)-n, samples)
-
-    #       Now, we need to partition based on the number of threads xD
-    int_numb = trunc(Int, samples / Threads.nthreads())
-    par_numb = samples - (int_numb * Threads.nthreads())
-
-    #       Creates the partition ranges and puts them into a vector...
     _numb_init = int_numb + (par_numb > 0 ? 1 : 0)
     if (par_numb > 0)
         par_numb -= 1
@@ -138,37 +69,60 @@ function microstates(serie::AbstractArray{__FLOAT_TYPE,2}, ε::Any, n::Int; samp
         push!(itr, (itr[i-1][end]+1):(itr[i-1][end]+_numb))
     end
 
-    #       Free memory...
     int_numb = Nothing
     par_numb = Nothing
     _numb_init = Nothing
 
-    #       Okay, now we create the tasks...
+    function __async_compute(x_index, th_index)
+        #
+        y_samples = sample(1:size(data_y, 2)-(sz[2]-1), Int(ceil(size(data_y, 2) * side_samples)))
+        #
+        add = 0
+        x_counter = 0
+        y_counter = 0
+        counter = 0
+        #
+        for x in x_index
+            y_samples = sample(1:size(data_y, 2)-(sz[2]-1), Int(ceil(size(data_y, 2) * side_samples)))
+            for y in y_samples
+                add = 0
+                x_counter = 0
+                y_counter = 0
+
+                for m in eachindex(vect)
+                    add = add + vect[m] * recurr(data_x[:, x+x_counter], data_y[:, y+y_counter], threshold)
+                    y_counter += 1
+                    if (y_counter >= sz[2])
+                        x_counter += 1
+                        y_counter = 0
+                    end
+                end
+
+                p = add + 1
+                stats[p, th_index] += 1
+                counter += 1
+            end
+        end
+
+        return counter
+    end
+
     tasks = []
     for i = 1:Threads.nthreads()
-        push!(tasks, Threads.@spawn __task_microstates(x_samples[itr[i]], i))
+        push!(tasks, Threads.@spawn __async_compute(x_samples[itr[i]], i))
     end
 
-    #       Wait and get the result of the tasks =3
     results = fetch.(tasks)
-    #       Alloc memory for all microstate that we can have.
-    stats = zeros(__FLOAT_TYPE, 2^(n * n))
     cnt = 0
-    #       Groups the results of the tasks...
-    for r in results
-        cnt += r[2]
-        stats[collect(keys(r[1]))] .= collect(values(r[1]))
+
+    res = zeros(Float64, 2^(sz[1] * sz[2]))
+    for i = 1:Threads.nthreads()
+        res .= res .+ stats[:, i]
+        cnt += results[i]
     end
-    #       To finish, calculates the probabilities =D
-    for i in eachindex(stats)
-        stats[i] /= cnt
-    end
-    #
+
+    stats ./= cnt
+
     return stats, cnt
 end
-
-#
-#       DEV Version: I want to try create a 3 dimensions recurrence block, while I expand the
-#   recurrence concept.
-function microstates()
-end
+# -------------------------------------------------------------------------------------------

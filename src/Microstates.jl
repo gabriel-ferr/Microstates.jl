@@ -1,39 +1,32 @@
 #
-#           Microstates.jl
-#               Gabriel Ferreira
-#               Orientation: Sérgio Roberto Lopes, Thiago de Lima Prado
+#           Microstates.jl DEV Version
+#           https://github.com/gabriel-ferr/Microstates.jl
 #
-#       GitHub: https://github.com/gabriel-ferr/Microstates.jl
+#       By Gabriel Vinicius Ferreira, Sérgio Roberto Lopes and Thiago de Lima Prado
 #
-#   References:
-#       
-
+#       References:
+#   [1] G. Corso, T. De Lima Prado, G. Z. D. S. Lima, J. Kurths, and S. R. Lopes, 
+#   Quantifying Entropy Using Recurrence Matrix Microstates, Chaos an Interdisciplinary Journal of Nonlinear Science 28, (2018).
+#
+#
+#       Contact: gabriel.vferreira@icloud.com
+#
+# ===========================================================================================
+#           To use this dev version:
+#       julia> Pkg.add("https://github.com/gabriel-ferr/Microstates.jl")
+#       ...
+#       julia> using Microstates
+# ===========================================================================================
 module Microstates
-#
-#       Import the libraries that we need...
+# -------------------------------------------------------------------------------------------
 using Distances
 using StatsBase
 using Statistics
-#       Define the float type that Microstates use.
-__FLOAT_TYPE = Float64
-#       Change the float type between Float32 or Float64.
-function change_float_type(type::DataType)
-    if (type != Float64 && type != Float32)
-        println(string("The data type `", type, "` is not valid. Please use `Float64` or `Float32`."))
-        return
-    end
-    __FLOAT_TYPE = type
-end
-#
-#       Include the project files...
+# -------------------------------------------------------------------------------------------
 include("cpu/compute.jl")
-include("cpu/entropy.jl")
-include("cpu/findthres.jl")
 include("utils/std_recurrence.jl")
-include("utils/crd_recurrence.jl")
-#       Export the functions...
-export microstates
+# -------------------------------------------------------------------------------------------
 export power_vector
-export findthreshold
-#
+export microstates
+# ===========================================================================================
 end
